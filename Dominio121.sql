@@ -382,3 +382,70 @@ COSTO_PRODUCTO
 FROM TIPO_PRODUCTO
 INNER JOIN TECNICO ON TIPO_PRODUCTO.ID_TIPO = TECNICO.ID_TECNICOS
 INNER JOIN PRODUCTO ON TIPO_PRODUCTO.ID_TIPO = PRODUCTO.ID_PRODUCTOS
+
+--stop-procidio--
+create or replace function total(
+IN tipo varchar,
+	OUT total varchar
+)
+as $BODY$
+begin 
+	select count(distinct tecnico.id_tecnicos) into total
+	from tipo_producto
+	inner join tecnico on tecnico.id_tecnicos = tipo_producto.id_tipo
+	where mueble_comedor = tipo;
+	
+end
+$BODY$
+language plpgsql;
+select * from total('mesa_sala')
+
+--cursor--
+
+do $$
+declare 
+contador decimal =0;
+total Record;
+--INICIO DEL CURSOR
+totalingresos Cursor for select * from producto,tipo_producto,tecnico, detalle_producto, proforma, cliente
+where producto.id_productos = producto.id_productos and 
+tecnico.id_tecnicos = 2 and tecnico.nombre_tec ='Freddy' and tipo_producto.id_tecnicos = tipo_producto.id_tecnicos and
+detalle_producto.id_tipo = detalle_producto.id_tipo and proforma.id_productos =proforma.id_productos and cliente.id_cliente =cliente.id_cliente;
+begin
+for total in totalingresos loop
+contador = contador+count(total.id_tecnicos);
+Raise Notice 'tecnico: %, Nombres: %, cliente: %, cantidad: %, mueble: %,descuento: %, contador: %',
+total.id_tecnicos, total.nombre_tec,total.nombres,total.stock_producto,total.mueble_comedor, total.descuento, contador;
+end loop;
+end $$
+Language 'plpgsql';
+
+
+--trigger--
+CREATE OR REPLACE FUNCTION VALOR() RETURNS TRIGGER
+AS 
+$VALOR$
+	DECLARE
+		cantidad int;
+		ful int = 3;
+BEGIN 
+select count (*) into cantidad  from cliente where id_cliente = new.id_cliente;
+select proforma.id_proformas into ful from proforma;
+	if (cantidad >= ful) then
+	RAISE EXCEPTION 'NO SE PUEDE HACER MAS PROFORMAS';
+	END if;
+	RETURN new;
+END;
+$VALOR$
+LANGUAGE plpgsql;
+
+create trigger VALOR before insert
+on cliente for EACH ROW
+execute procedure VALOR();
+
+--INSERTAMOS DATOS PARA VERIFICAR EN EL TRIGGER
+insert into cliente values(1,1,'Andree','Velez',1310834569,0985658980,'rodrigo@gmail.com','Manta-Si_Vivienda')
+
+
+
+
